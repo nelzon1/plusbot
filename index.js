@@ -72,9 +72,31 @@ function sendMessage( message , user ){
     });
 }
 
+getPoints();
+setInterval(savePoints,30 * 1000);
+
+function getLeaderboard(){
+    var list = [];
+    Object.keys(points).forEach(function(element,key){
+        list.push([element,points[element]]);
+    })
+
+    list.sort(sortLeaders);
+    return list.slice(0,10);
+}
+
+function sortLeaders(a,b){
+    if (a[0] === b[0]) {
+        return 0;
+    }
+    else {
+        return (a[0] < b[0]) ? -1: 1;
+    }
+}
 
 
 /*
+console.log(getLeaderboard());
 console.log(userPlusPlus.exec("Hi <@UJSJFD34> ++ You are awesome!")[0]);
 getPoints();
 console.log(points);
