@@ -1,0 +1,29 @@
+{
+  "name": "plusbot",
+  "version": "1.0.0",
+  "description": "Slack bot to add/remove points from team members and keep track.",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nelzon1/plusbot.git"
+  },
+  "keywords": [
+    "Slack",
+    "PlusBot",
+    "Points"
+  ],
+  "author": "Jake Nelson",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nelzon1/plusbot/issues"
+  },
+  "homepage": "https://github.com/nelzon1/plusbot#readme",
+  "dependencies": {
+    "express": "^4.16.3",
+    "jsonfile": "^4.0.0",
+    "request": "^2.87.0"
+  }
+}
