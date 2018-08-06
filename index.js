@@ -20,8 +20,9 @@ var thingPlusPlus =  /(@)\S+\s(\+\+)/;
 var thingMinusMinus = /(@)\S+\s(\-\-)/;
 var plusbot = "UC2CYDAE8";
 var leaderboard = /(@UC2CYDAE8)\s(leaderboard)/;
-var reset = /(@UC2CYDAE8)\s(reset leaderboard)/;
-var userScore = /(@UC2CYDAE8)\s(<)\S+(>)/;
+var reset = /(<@UC2CYDAE8>)\s(reset leaderboard)/;
+var userScore = /(<@UC2CYDAE8>)\s(<)\S+(>)/;
+var userTag = /<@\S+>/g;
 
 var points = {};
 var filename = "data.json";
@@ -36,19 +37,30 @@ function savePoints(){
 
 function checkPoints(user){
     if (points.hasOwnProperty(user)){
-        return points[user];
+        return points[user].score;
     }
     else {
+        //points[user] = {"score":0,"type":"U"};
         return 0;
     }
 }
 
+function addRecord(user,type="U"){
+    if (points.hasOwnProperty(user)){
+        return false;
+    }
+    else {
+        points[user] = {"score": 0, "type": type};
+        return true;
+    }
+}
+
 function addPoint(user){
-    points[user] = checkPoints(user) + 1;
+    points[user].score = checkPoints(user) + 1;
 }
 
 function removePoint(user){
-    points[user] = checkPoints(user) - 1;
+    points[user].score = checkPoints(user) - 1;
 }
 
 function sendMessage( message , user ){
@@ -139,12 +151,15 @@ app.post("/plusbot", function(req,res){
 
             //user score
             else if ( userScore.test(payload.event.text) ){
-
+                userTag.exec(payload.event.text);
+                ptUser = userTag.exec(payload.event.text)[0].slice(2,-1);
+                sendMessage("User score: ",ptUser);
             }
 
 
             //user plus plus
             else if ( userPlusPlus.test(payload.event.text) ){
+                addRecord(ptUser,"U");
                 addPoint(ptUser);
                 sendMessage("userPlusPlus",ptUser);
             }
@@ -152,6 +167,7 @@ app.post("/plusbot", function(req,res){
 
             //user minus minus
             else if (userMinusMinus.test(payload.event.text) ){
+                addRecord(ptUser,"U");
                 removePoint(ptUser);
                 sendMessage("userMinusMinus",ptUser);
             }
@@ -159,6 +175,7 @@ app.post("/plusbot", function(req,res){
             //thing plus plus
             else if (thingPlusPlus.test(payload.event.text) ){
                 let thing = thingPlusPlus.exec(payload.event.text)[0].slice(1,-3);
+                addRecord(thing,"T");
                 addPoint(thing);
                 console.log(thing);
                 sendMessage("thingPlusPlus",thing);
@@ -167,6 +184,7 @@ app.post("/plusbot", function(req,res){
             //thing minus minus
             else if (thingMinusMinus.test(payload.event.text) ){
                 let thing = thingMinusMinus.exec(payload.event.text)[0].slice(1,-3);
+                addRecord(thing,"T");
                 removePoint(thing);
                 sendMessage("thingMinusMinus",thing);
             }
