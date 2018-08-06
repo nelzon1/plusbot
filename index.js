@@ -6,6 +6,8 @@ var express = require("express");
 var request = require("request");
 var jsonfile = require("jsonfile");
 var bodyParser = require("body-parser");
+var parse = require("csv-parse/lib/sync");
+var fs = require("fs");
 
 var app = express();
 app.use(bodyParser());
@@ -19,13 +21,36 @@ var userMinusMinus = /(<@)\S+(>)\s(\-\-)/;
 var thingPlusPlus =  /(@)\S+\s(\+\+)/;
 var thingMinusMinus = /(@)\S+\s(\-\-)/;
 var plusbot = "UC2CYDAE8";
-var leaderboard = /(@UC2CYDAE8)\s(leaderboard)/;
+var leaderboard = /<@UC2CYDAE8>\sleaderboard/;
 var reset = /(<@UC2CYDAE8>)\s(reset leaderboard)/;
 var userScore = /(<@UC2CYDAE8>)\s(<)\S+(>)/;
 var userTag = /<@\S+>/g;
 
 var points = {};
 var filename = "data.json";
+
+let good = [];
+let bad = [];
+
+
+function getMessages(){
+
+    fs.readFile("good.csv","utf8",function(err,data){
+        if (err) throw err;
+        good = parse(data);
+        //console.log(good[0]);
+
+    })
+
+    fs.readFile("bad.csv","utf8",function(err,data){
+        if (err) throw err;
+        bad = parse(data);
+        //console.log(bad[0]);
+
+    })
+}
+
+getMessages();
 
 function getPoints(){
     points = jsonfile.readFileSync(filename);
@@ -63,22 +88,40 @@ function removePoint(user){
     points[user].score = checkPoints(user) - 1;
 }
 
-function sendMessage( message , user ){
+function sendMessage( karma , user ){
+    if (karma === "good") {
+        var msg = good[Math.floor(Math.random()*good.length)][0];
+        colour = "#62cc1c";
+    }
+    else if (karma === "bad") {
+        var msg = bad[Math.floor(Math.random()*bad.length)][0];
+        colour = "#ff2300";
+    }
+    else if (karma === "score") {
+        var msg = "User score:";
+        colour = "#f59800";
+    }
+    else if (karma === "leader") {
+        var msg = getLeaderboard().toString();
+        colour = "#0183f7";
+    }
+
     var options = {
         url: webhook,
         method: "POST",
         json: true,
         body: {
-            text: "Message recieved",
+            text: msg,
             link_names: 0,
             attachments: [{
-                text: message + " <@" + user + "> now at " + checkPoints(user) + " points",
+                text: "<@" + user + "> now at " + checkPoints(user) + " points.",
+                color: colour
             }]
         }
     };
     request(options,function(error, response, body) {
         if (!error && response.statusCode == 200) {
-            console.log(" - Sent notification to Slack: " + message);
+            //console.log(" - Sent notification to Slack: " + message);
         }
         else console.log(" - Error communicating with Slack API");
     });
@@ -90,7 +133,9 @@ setInterval(savePoints,30 * 1000);
 function getLeaderboard(){
     var list = [];
     Object.keys(points).forEach(function(element,key){
-        list.push([element,points[element]]);
+        if (points[element].type === "U"){
+            list.push([element,points[element].score]);
+        }
     })
 
     list.sort(sortLeaders);
@@ -98,17 +143,22 @@ function getLeaderboard(){
 }
 
 function sortLeaders(a,b){
-    if (a[0] === b[0]) {
+    if (a[1] === b[1]) {
         return 0;
     }
     else {
-        return (a[0] < b[0]) ? -1: 1;
+        return (a[1] > b[1]) ? -1: 1;
     }
 }
+function test(){
 
+    console.log(good[Math.floor(Math.random()*good.length)]);
+}
+
+setTimeout(test,2000);
 
 /*
-console.log(getLeaderboard());
+
 console.log(userPlusPlus.exec("Hi <@UJSJFD34> ++ You are awesome!")[0]);
 getPoints();
 console.log(points);
@@ -146,14 +196,16 @@ app.post("/plusbot", function(req,res){
 
             //leaderboard
             if ( leaderboard.test(payload.event.text) ){
-
+                console.log(payload.event.text);
+                //sendLeaderboard;
+                sendMessage("leader",ptUser);
             }
 
             //user score
             else if ( userScore.test(payload.event.text) ){
                 userTag.exec(payload.event.text);
                 ptUser = userTag.exec(payload.event.text)[0].slice(2,-1);
-                sendMessage("User score: ",ptUser);
+                sendMessage("score",ptUser);
             }
 
 
@@ -161,7 +213,7 @@ app.post("/plusbot", function(req,res){
             else if ( userPlusPlus.test(payload.event.text) ){
                 addRecord(ptUser,"U");
                 addPoint(ptUser);
-                sendMessage("userPlusPlus",ptUser);
+                sendMessage("good",ptUser);
             }
 
 
@@ -169,7 +221,7 @@ app.post("/plusbot", function(req,res){
             else if (userMinusMinus.test(payload.event.text) ){
                 addRecord(ptUser,"U");
                 removePoint(ptUser);
-                sendMessage("userMinusMinus",ptUser);
+                sendMessage("bad",ptUser);
             }
 
             //thing plus plus
@@ -178,7 +230,7 @@ app.post("/plusbot", function(req,res){
                 addRecord(thing,"T");
                 addPoint(thing);
                 console.log(thing);
-                sendMessage("thingPlusPlus",thing);
+                sendMessage("good",thing);
             }
 
             //thing minus minus
@@ -186,7 +238,7 @@ app.post("/plusbot", function(req,res){
                 let thing = thingMinusMinus.exec(payload.event.text)[0].slice(1,-3);
                 addRecord(thing,"T");
                 removePoint(thing);
-                sendMessage("thingMinusMinus",thing);
+                sendMessage("bad",thing);
             }
         }
         
