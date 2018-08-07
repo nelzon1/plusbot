@@ -22,6 +22,9 @@ var thingPlusPlus =  /(@)\S+\s(\+\+)/;
 var thingMinusMinus = /(@)\S+\s(\-\-)/;
 var plusbot = "UC2CYDAE8";
 var leaderboard = /<@UC2CYDAE8>\sleaderboard/;
+var leaderboardthing = /<@UC2CYDAE8>\sleaderboard\sthings/;
+var loserboard = /<@UC2CYDAE8>\sloserboard/;
+var loserboardthing = /<@UC2CYDAE8>\sloserboard\sthings/;
 var reset = /(<@UC2CYDAE8>)\s(reset leaderboard)/;
 var userScore = /(<@UC2CYDAE8>)\s(<)\S+(>)/;
 var userTag = /<@\S+>/g;
@@ -127,19 +130,71 @@ function sendMessage( karma , user ){
     });
 }
 
+function sendLeaderboard( list, type="U" ){
+    let msg = "";
+    if (type === "U") {
+        msg += "Current leaderboard:\n ";
+        let index = 0;
+        list.forEach(function(user){
+            index ++;
+            msg += index + ". <@" + user[0] + "> at " + checkPoints(user[0]) + " points.\n"
+        })
+    }
+    else if (type ==="T"){
+        msg += "Current leaderboard:\n ";
+        let index = 0;
+        list.forEach(function(user){
+            index ++;
+            msg += index + ". @" + user[0] + " at " + checkPoints(user[0]) + " points.\n"
+        })
+    }
+
+    var options = {
+        url: webhook,
+        method: "POST",
+        json: true,
+        body: {
+            text: msg,
+            link_names: 0
+        }
+    };
+    request(options,function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            //console.log(" - Sent notification to Slack: " + message);
+        }
+        else console.log(" - Error communicating with Slack API");
+    });
+}
+
+
+
 getPoints();
 setInterval(savePoints,30 * 1000);
 
-function getLeaderboard(){
-    var list = [];
+function getLeaderboard(type="U", karma="good"){
+    var userlist = [];
+    var thinglist = [];
     Object.keys(points).forEach(function(element,key){
         if (points[element].type === "U"){
-            list.push([element,points[element].score]);
+            userlist.push([element,points[element].score]);
+        }
+        else if (points[element].type === "T"){
+            thinglist.push([element,points[element].score]);
         }
     })
 
-    list.sort(sortLeaders);
-    return list.slice(0,10);
+
+    userlist.sort(sortLeaders);
+    thinglist.sort(sortLeaders);
+
+    if (karma === "bad"){
+        userlist.reverse();
+        thinglist.reverse();
+    }
+
+    if (type === "U")   return userlist.slice(0,10);
+    else if (type === "T")  return thinglist.slice(0,10);
+    
 }
 
 function sortLeaders(a,b){
@@ -167,7 +222,7 @@ console.log(checkPoints("Bob"));
 
 
 app.post("/plusbot", function(req,res){
-
+    res.sendStatus(200);
     let payload = req.body;
     //console.log(req);
     console.log(payload.event);
@@ -179,7 +234,7 @@ app.post("/plusbot", function(req,res){
         res.set("application/json").send({body: {"challenge": challenge} });
     }
 
-    if (payload.type==="event_callback"){
+    else if (payload.type==="event_callback"){
 
         if (payload.event.type === "message" && payload.event.subtype !== "bot_message")
         {
@@ -194,12 +249,36 @@ app.post("/plusbot", function(req,res){
                 console.log("no user mention");
             }
 
-            //leaderboard
-            if ( leaderboard.test(payload.event.text) ){
-                console.log(payload.event.text);
-                //sendLeaderboard;
-                sendMessage("leader",ptUser);
+             //leaderboard things
+             if ( leaderboardthing.test(payload.event.text) ){
+                //console.log(payload.event.text);
+                sendLeaderboard(getLeaderboard("T"),"T");
+                //sendMessage("leader",ptUser);
             }
+
+
+            //leaderboard
+            else if ( leaderboard.test(payload.event.text) ){
+                //console.log(payload.event.text);
+                sendLeaderboard(getLeaderboard(),"U");
+                //sendMessage("leader",ptUser);
+            }
+
+            //loserboard things
+            else if ( loserboardthing.test(payload.event.text) ){
+                //console.log(payload.event.text);
+                sendLeaderboard(getLeaderboard("T","bad"),"T");
+                //sendMessage("leader",ptUser);
+            }
+
+            //loserboard
+            else if ( loserboard.test(payload.event.text) ){
+                //console.log(payload.event.text);
+                sendLeaderboard(getLeaderboard("U","bad"),"U");
+                //sendMessage("leader",ptUser);
+            }
+
+
 
             //user score
             else if ( userScore.test(payload.event.text) ){
@@ -245,7 +324,7 @@ app.post("/plusbot", function(req,res){
         
     }
 
-    res.sendStatus(200);
+
 });
 
 
