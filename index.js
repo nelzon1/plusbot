@@ -166,6 +166,27 @@ function sendLeaderboard( list, type="U" ){
     });
 }
 
+function sendReprimand(user){
+
+    var msg = "Really, <@" + user + ">?";
+    colour = "#ff2300";
+
+    var options = {
+        url: webhook,
+        method: "POST",
+        json: true,
+        body: {
+            text: msg,
+            link_names: 0
+        }
+    };
+    request(options,function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            //console.log(" - Sent notification to Slack: " + message);
+        }
+        else console.log(" - Error communicating with Slack API");
+    });
+}
 
 
 getPoints();
@@ -290,17 +311,27 @@ app.post("/plusbot", function(req,res){
 
             //user plus plus
             else if ( userPlusPlus.test(payload.event.text) ){
-                addRecord(ptUser,"U");
-                addPoint(ptUser);
-                sendMessage("good",ptUser);
+                if (ptUser === msgUser) {
+                    sendReprimand(msgUser);
+                }
+                else {
+                    addRecord(ptUser,"U");
+                    addPoint(ptUser);
+                    sendMessage("good",ptUser);
+                }
             }
 
 
             //user minus minus
             else if (userMinusMinus.test(payload.event.text) ){
-                addRecord(ptUser,"U");
-                removePoint(ptUser);
-                sendMessage("bad",ptUser);
+                if (ptUser === msgUser) {
+                    sendReprimand(msgUser);
+                }
+                else {
+                    addRecord(ptUser,"U");
+                    removePoint(ptUser);
+                    sendMessage("bad",ptUser);
+                }
             }
 
             //thing plus plus
